@@ -12,6 +12,8 @@ public class SetupLocalPlayer : NetworkBehaviour {
 	string colourboxname = "";
     public Slider healthPrefab;
     public Slider health;
+    public GameObject explosion;
+    NetworkStartPosition[] spawnPos;
 
     [SyncVar(hook = "OnChangeHealth")]
     public int healthValue = 100;
@@ -51,6 +53,28 @@ public class SetupLocalPlayer : NetworkBehaviour {
     {
         healthValue = healthValue + i;
         health.value = healthValue;
+
+        if(healthValue <=0)
+        {
+            GameObject e = Instantiate(explosion, this.transform.position, Quaternion.identity);
+            NetworkServer.Spawn(e);
+            this.GetComponent<Rigidbody>().velocity = Vector3.zero;// So it's not moving when it is respawned
+            RpcRespawn();
+            healthValue = 100;
+        }
+    }
+
+    [ClientRpc]
+    public void RpcRespawn()
+    {
+        if (!isLocalPlayer)
+        {
+            return;
+        }
+        if(spawnPos != null && spawnPos.Length > 0)
+        {
+            transform.position = spawnPos[Random.Range(0, spawnPos.Length)].transform.position;
+        }
     }
 
 
@@ -125,6 +149,8 @@ public class SetupLocalPlayer : NetworkBehaviour {
 
         health = Instantiate(healthPrefab, Vector3.zero, Quaternion.identity) as Slider;
         health.transform.SetParent(canvas.transform);
+
+        spawnPos = FindObjectsOfType<NetworkStartPosition>();
 	}
 
 	public void OnDestroy()
