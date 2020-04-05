@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -10,12 +10,23 @@ public class SetupLocalPlayer : NetworkBehaviour {
 	public Transform namePos;
 	string textboxname = "";
 	string colourboxname = "";
+    public Slider healthPrefab;
+    public Slider health;
+
+    [SyncVar(hook = "OnChangeHealth")]
+    public int healthValue = 100;
 
 	[SyncVar (hook = "OnChangeName")]
 	public string pName = "player";
 
 	[SyncVar (hook = "OnChangeColour")]
 	public string pColour = "#ffffff";
+
+    void OnChangeHealth(int n)
+    {
+        healthValue = n;
+        health.value = healthValue;
+    }
 
     void OnChangeName (string n)
     {
@@ -35,8 +46,15 @@ public class SetupLocalPlayer : NetworkBehaviour {
         }
     }
 
+    [Command]
+    public void CmdChangeHealth(int i)
+    {
+        healthValue = healthValue + i;
+        health.value = healthValue;
+    }
 
-	[Command]
+
+    [Command]
 	public void CmdChangeName(string newName)
 	{
 		pName = newName;
@@ -104,15 +122,29 @@ public class SetupLocalPlayer : NetworkBehaviour {
 		GameObject canvas = GameObject.FindWithTag("MainCanvas");
 		nameLabel = Instantiate(namePrefab, Vector3.zero, Quaternion.identity) as Text;
 		nameLabel.transform.SetParent(canvas.transform);
+
+        health = Instantiate(healthPrefab, Vector3.zero, Quaternion.identity) as Slider;
+        health.transform.SetParent(canvas.transform);
 	}
 
 	public void OnDestroy()
-	{
-		if(nameLabel != null)
-			Destroy(nameLabel.gameObject);
-	}
+    {
+		if(nameLabel != null && health != null)
+        {
+            Destroy(nameLabel.gameObject);
+            Destroy(health.gameObject);
+        }
+    }
 
-	void Update()
+    private void OnCollisionEnter(Collision collision)
+    {
+        if(isLocalPlayer && collision.gameObject.tag == "bullet")
+        {
+            CmdChangeHealth(-5);
+        }
+    }
+
+    void Update()
 	{
 		//determine if the object is inside the camera's viewing volume
 		if(nameLabel != null)
@@ -124,10 +156,15 @@ public class SetupLocalPlayer : NetworkBehaviour {
 			if(onScreen)
 			{
 				Vector3 nameLabelPos = Camera.main.WorldToScreenPoint(namePos.position);
-				nameLabel.transform.position = nameLabelPos;
-			}
-			else //otherwise draw it WAY off the screen 
-				nameLabel.transform.position = new Vector3(-1000,-1000,0);
-		}
-	}
+                nameLabel.transform.position = nameLabelPos;
+                health.transform.position = nameLabelPos + new Vector3(0,15,0);
+
+            }
+            else //otherwise draw it WAY off the screen 
+            {
+                nameLabel.transform.position = new Vector3(-1000, -1000, 0);
+                health.transform.position = new Vector3(-1000, -1000, 0);
+            }
+        }
+    }
 }
